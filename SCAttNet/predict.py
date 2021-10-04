@@ -16,13 +16,16 @@ batch_size=1
 img=tf.placeholder(tf.float32,[batch_size,256,256,3])
 test_img=sorted(glob.glob('./dataset/test/37/*.png'))
 phase_train = tf.placeholder(tf.bool, name='phase_train')
+# Inference is imported from scattnet
 pred = inference(img,phase_train)
 
 saver=tf.train.Saver()
 def save():
+    # In TF2 there is no need to use initializer. In TF2, variables are initialized immediately when they are created. There is no longer a need to run variable initializers before using them. 
     tf.global_variables_initializer().run()
     checkpoint_dir = './checkpoint/'
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+    # Returns CheckpointState proto from the "checkpoint" file.
     if ckpt and ckpt.model_checkpoint_path:
         ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
         saver.restore(sess, os.path.join(checkpoint_dir, ckpt_name))
