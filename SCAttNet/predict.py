@@ -13,6 +13,9 @@ import numpy as np
 import glob
 import scipy
 batch_size=1
+# placeholder is depricated in TF2
+# placeholder is different from tf.variable
+# variables are learnable parameters
 img=tf.placeholder(tf.float32,[batch_size,256,256,3])
 test_img=sorted(glob.glob('./dataset/test/37/*.png'))
 phase_train = tf.placeholder(tf.bool, name='phase_train')
@@ -38,8 +41,10 @@ def save():
                               
                                 phase_train: False   
                             }
+                # Inference session is called after setting up with the test images and the phase_train is set to False.
                 pred1=sess.run(pred,feed_dict=feed_dict)
             
+                # np.argmax: Returns the indices of the maximum values along an axis.
                 predict=np.argmax(pred1,axis=3)
                 predict=np.squeeze(predict).astype(np.uint8)
                 scipy.misc.imsave('./37/'+i,predict)
@@ -66,6 +71,7 @@ def vis():
                 predict=np.argmax(pred1,axis=3)
                 predict=np.squeeze(predict)
 
+                # Visualization is performed from below!
                 plt.imshow(x_batch1)
                 plt.show()
 
