@@ -19,6 +19,7 @@ def channel_spatial_block(input_feature, name, ratio=8):
     As described in https://arxiv.org/abs/1807.06521.
     """
 
+    """ Variable_scope: https://chromium.googlesource.com/external/github.com/tensorflow/tensorflow/+/r0.7/tensorflow/g3doc/how_tos/variable_scope/index.md """
     with tf.variable_scope(name):
         scale,attention_feature = channel_attention(input_feature, 'ch_at', ratio)
         concat,attention_feature = spatial_attention(attention_feature, 'sp_at')
@@ -26,13 +27,22 @@ def channel_spatial_block(input_feature, name, ratio=8):
 
 
 def channel_attention(input_feature, name, ratio=8):
+    """channel_attention module has average and max pooling operations. These are the two feature descriptors for each channel. reduce_mean and reduce_max operations are used.
+    Then the feature_descriptors are fed to a shared MLP to generate feature vectors. tf.layers.dense is used create MLP
+    Outputs are merged using summation. summation is performed while passing to sigmoid function (avg_pool + max_pool)
+    Finally sigmoid function is used to obtain final channel attention map. tf.sigmoid function is used with summation as input and sigmoid as second parameter and output is stored in 'scale' variable"""
+    
     kernel_initializer = tf.contrib.layers.variance_scaling_initializer()
     bias_initializer = tf.constant_initializer(value=0.0)
 
     with tf.variable_scope(name):
-        channel = input_feature.get_shape()[-1]
+        # Number of channels are obtaining by taking the last element of array/tuple returned by get_shape
+        channel = input_feature.get_shape()[-1] 
+        # Reduce_mean function gets the mean of the array in the axis specified in 'axis' parameter
+        # axis-0 has no. of samples, last axis has no. of channels thus 1st and 2nd axis save data
         avg_pool = tf.reduce_mean(input_feature, axis=[1, 2], keep_dims=True)
 
+        # Assert is used as the check statement. If some issues raised in above logic, then the next statement is executed.
         assert avg_pool.get_shape()[1:] == (1, 1, channel)
         avg_pool = tf.layers.dense(inputs=avg_pool,
                                    units=channel // ratio,
@@ -56,20 +66,26 @@ def channel_attention(input_feature, name, ratio=8):
                                    units=channel // ratio,
                                    activation=tf.nn.relu,
                                    name='mlp_0',
-                                   reuse=True)
+                                   reuse=True) # Here reuse variable is set to True, this shows the sharing of MLP btwn avg and max pool
         assert max_pool.get_shape()[1:] == (1, 1, channel // ratio)
         max_pool = tf.layers.dense(inputs=max_pool,
                                    units=channel,
                                    name='mlp_1',
                                    reuse=True)
         assert max_pool.get_shape()[1:] == (1, 1, channel)
+        # Summation of avg and max pool can be observed here.
         scale = tf.sigmoid(avg_pool + max_pool, 'sigmoid')
 
-
+    # understand why input_feature * scale is done
+    # this can be understood where the outputs are used, probably!!
     return scale,input_feature * scale
 
 
 def spatial_attention(input_feature, name):
+    """ spatial_attention module also has two feature descriptors, as avg and max pooling. reduce_mean and reduce_max
+    concatenate the two feature descriptors and obtain spatial attention map using 7x7 convolution operation. tf.concat is used for concatenation
+    Finally, to map to 0~1 sigmoid function is used. tf.layers.conv2d is used for 7x7 convolution operation"""
+    
     kernel_size = 7
     kernel_initializer = tf.contrib.layers.variance_scaling_initializer()
     with tf.variable_scope(name):
